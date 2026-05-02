@@ -22,14 +22,14 @@ def insert_user(conn, username, password_hash, name=None):
         print(f"Ошибка вставки пользователя: {e}")
         return None
 
-def insert_workout_session(conn, user_id, name, date, status='planned', template_id=None, duration=None, notes=None):
+def insert_workout_session(conn, user_id, name, date, status='planned', template_id=None, times=None, notes=None):
     """Добавляет тренировочную сессию. Возвращает её ID."""
     sql = """INSERT INTO workout_sessions 
-             (user_id, template_id, name, date, duration, notes, status) 
+             (user_id, template_id, name, date, times, notes, status) 
              VALUES (?, ?, ?, ?, ?, ?, ?)"""
     cur = conn.cursor()
     try:
-        cur.execute(sql, (user_id, template_id, name, date, duration, notes, status))
+        cur.execute(sql, (user_id, template_id, name, date, times, notes, status))
         conn.commit()
         return cur.lastrowid
     except Error as e:
@@ -197,4 +197,12 @@ def beautiful_select(conn, query, params=None):
         print(fmt.format(*safe_row))
     return rows
 
-connect = connection()
+def init_db(conn, sql_filename="Create DB.sql"):
+    """Читает SQL файл и создает таблицы."""
+    with open(sql_filename, "r", encoding="utf-8") as f:
+        sql_script = f.read()
+    try:
+        conn.executescript(sql_script)
+        print("База данных успешно инициализирована.")
+    except Error as e:
+        print(f"Ошибка создания таблиц: {e}")
