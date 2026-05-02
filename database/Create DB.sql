@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS workout_sessions (
     date TEXT NOT NULL,
     times INTEGER,
     notes TEXT,
-    status TEXT NOT NULL CHECK (status IN ('запланировано', 'завершено')),
+    status TEXT NOT NULL CHECK (status IN ('planned', 'completed')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE SET NULL
 );
