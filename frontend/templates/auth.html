@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Workout Planner</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="auth-body">
+
+<div class="auth-container">
+    
+    <!-- Форма входа -->
+    <div id="login-form" class="{% if show_reg %}hidden{% endif %}">
+        <h2>Вход в систему</h2>
+        {% if error %}
+        <div style="color: #ff4b2b; background: rgba(255, 75, 43, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ff4b2b;">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form action="/web/login" method="post">
+            <div class="input-group">
+                <label for="login-username">Логин</label>
+                <input type="text" id="login-username" name="username" required>
+            </div>
+            <div class="input-group">
+                <label for="login-password">Пароль</label>
+                <input type="password" id="login-password" name="password" required>
+            </div>
+            <button type="submit" class="btn-metallic">Войти</button>
+        </form>
+        <div class="toggle-link" onclick="toggleForms()">Нет аккаунта? Зарегистрироваться</div>
+    </div>
+
+    <!-- Форма регистрации (по умолчанию скрыта) -->
+    <div id="register-form" class="{% if not show_reg %}hidden{% endif %}">
+        <h2>Регистрация</h2>
+
+        <!-- Блок ошибки регистрации -->
+        {% if reg_error %}
+        <div style="color: #ff4b2b; background: rgba(255, 75, 43, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ff4b2b;">
+            {{ reg_error }}
+        </div>
+        {% endif %}
+        <form action="/web/register" method="post">
+            <div class="input-group">
+                <label for="reg-username">Логин</label>
+                <input type="text" id="reg-username" name="username" required>
+            </div>
+            <div class="input-group">
+                <label for="reg-name">Ваше имя (необязательно)</label>
+                <input type="text" id="reg-name" name="name">
+            </div>
+            <div class="input-group">
+                <label for="reg-password">Пароль</label>
+                <input type="password" id="reg-password" name="password" required minlength="6">
+            </div>
+            <button type="submit" class="btn-metallic">Создать аккаунт</button>
+        </form>
+        <div class="toggle-link" onclick="toggleForms()">Уже есть аккаунт? Войти</div>
+    </div>
+
+</div>
+
+<script>
+    // Скрипт для переключения между входом и регистрацией
+    function toggleForms() {
+        const loginForm = document.getElementById('login-form');
+        const regForm = document.getElementById('register-form');
+        
+        if (loginForm.classList.contains('hidden')) {
+            loginForm.classList.remove('hidden');
+            regForm.classList.add('hidden');
+        } else {
+            loginForm.classList.add('hidden');
+            regForm.classList.remove('hidden');
+        }
+    }
+</script>
+
+</body>
+</html>

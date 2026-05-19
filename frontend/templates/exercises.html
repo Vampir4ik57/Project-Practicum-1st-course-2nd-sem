@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Каталог упражнений{% endblock %}
+
+{% block content %}
+<div class="catalog-header-box">
+    <div class="header-content">
+        <h1><i class="fas fa-dumbbell"></i> КАТАЛОГ <span>УПРАЖНЕНИЙ</span></h1>
+        <div class="header-line"></div>
+        <p>Выбирай эффективные движения для своего прогресса</p>
+    </div>
+</div>
+<div class="search-section card-metallic">
+    <form action="/web/exercises" method="get" style="display: flex; gap: 10px;">
+        <div style="position: relative; flex-grow: 1;">
+            <i class="fas fa-search" style="position: absolute; left: 15px; top: 15px; color: #555;"></i>
+            <input 
+                type="text" 
+                name="search" 
+                class="search-input" 
+                placeholder="Поиск по названию..." 
+                value="{{ search_query or '' }}"
+                style="width: 100%; padding: 10px 10px 10px 45px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: white;"
+            >
+        </div>
+        <button type="submit" class="btn-jump">Найти</button>
+        {% if search_query %}
+            <a href="/web/exercises" class="btn-reset">
+                <i class="fas fa-undo-alt"></i> Сбросить
+            </a>
+        {% endif %}
+    </form>
+</div>
+<div class="exercises-list">
+    {% for ex in exercises %}
+    <div class="exercise-card card-metallic">
+        <div class="ex-icon-side">
+            <i class="fas {{ ex.icon_class or 'fa-bolt' }}"></i>
+        </div>
+        
+        <div class="ex-content">
+            <!-- Название -->
+            <h3 class="ex-title">{{ ex.name }}</h3>
+            
+            <!-- Группа мышц с меткой -->
+            <div class="info-row">
+                <span class="field-label">Целевая группа:</span>
+                <span class="muscle-badge-new">{{ ex.muscle_group }}</span>
+            </div>
+            
+            <!-- Описание с меткой -->
+            <div class="info-block">
+                <span class="field-label">Об упражнении:</span>
+                <p class="ex-text">{{ ex.description }}</p>
+            </div>
+            
+            <a href="/web/exercises/{{ ex.id }}" class="btn-jump">Подробнее</a>
+        </div>
+    </div>
+    
+    {% endfor %}
+</div>
+{% endblock %}

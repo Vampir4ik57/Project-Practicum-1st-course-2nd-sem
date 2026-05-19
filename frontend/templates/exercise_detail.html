@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ ex.name }}{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <a href="javascript:history.back()" class="btn-back-styled">
+        <i class="fas fa-arrow-left"></i> Назад к списку
+    </a>
+
+    <div class="exercise-detail-card card-metallic">
+        <div class="detail-header">
+            <div class="ex-icon-large">
+                <i class="fas {{ ex.icon_class or 'fa-dumbbell' }}"></i>
+            </div>
+            <div class="ex-title-group">
+                <h1>{{ ex.name }}</h1>
+                <span class="muscle-tag-large">{{ex.muscle_group }}</span>
+            </div>
+        </div>
+
+        <div class="detail-body">
+            <!-- Блок описания описания -->
+            <div class="detail-section">
+                <h3 class="section-subtitle"><i class="fas fa-info-circle"></i> Описание</h3>
+                <p class="detail-text">{{ ex.description }}</p>
+            </div>
+
+            <!-- Блок тезники техники -->
+            <div class="detail-section">
+                <h3 class="section-subtitle"><i class="fas fa-list-ol"></i> Техника выполнения</h3>
+                <div class="technique-box">
+                    {{ ex.execution_steps | safe if ex.execution_steps else "Инструкция скоро появится..." }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Главная — {{ user.username }}{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+<div class="dashboard-page">
+    <header class="dash-hero">
+        <div class="dash-hero-text">
+            <h1> Добро пожаловать, {{ user.name or user.username }}!</h1>
+            <p class="dash-hero-sub">Твой персональный интерактивный трекер тренировок</p>
+        </div>
+        
+        <div class="dash-hero-stats">
+            <div class="dash-stat dash-stat-planned">
+                <span class="dash-stat-value">{{ planned_count or 0 }}</span>
+                <span class="dash-stat-label"><i class="fas fa-clock"></i> В ПЛАНАХ</span>
+            </div>
+            <div class="dash-stat dash-stat-done">
+                <span class="dash-stat-value">{{ completed_count or 0 }}</span>
+                <span class="dash-stat-label"><i class="fas fa-check-circle"></i> ВЫПОЛНЕНО</span>
+            </div>
+            <div class="dash-stat dash-stat-streak">
+                <span class="dash-stat-value animated-fire">
+                    <i class="fas fa-fire"></i> {{ user.current_streak or 0 }}
+                </span>
+                <span class="dash-stat-label">НЕДЕЛЬ ПОДРЯД</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dash-body-content">
+        <div class="calendar-card-wrapper">
+            <div id="calendar"></div>
+        </div>
+    </main>
+</div>
+
+<div id="eventDetailModal" class="custom-modal-overlay">
+    <div class="modal-glass-content">
+        <span class="modal-close-x" onclick="closeEventModal()">&times;</span>
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <span id="modalEventIcon" style="font-size: 24px;"></span>
+            <h2 id="modalEventTitle" style="margin: 0; font-size: 1.4rem; font-weight: 800;">Название тренировки</h2>
+        </div>
+        
+        <div class="modal-meta-info">
+            <p><i class="fas fa-calendar-alt" style="color: var(--cyan); margin-right: 8px;"></i> <strong>Дата:</strong> <span id="modalEventDate">--.--.----</span></p>
+            <p><i class="fas fa-info-circle" style="color: var(--cyan); margin-right: 8px;"></i> <strong>Статус:</strong> <span id="modalEventStatus" class="badge">Планируется</span></p>
+        </div>
+
+        <div class="modal-actions-footer">
+            <button id="btnMarkComplete" class="btn-prime-neon" onclick="markSessionComplete()">
+                <i class="fas fa-check"></i> Выполнить
+            </button>
+            <button id="btnEditSession" class="btn-secondary-dark">
+                <i class="fas fa-edit"></i> Изменить
+            </button>
+            <button id="btnDeleteSession" class="btn-danger-dark" onclick="deleteSession()">
+                <i class="fas fa-trash-alt"></i> Удалить
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="addWorkoutModal" class="custom-modal-overlay">
+    <div class="modal-glass-content">
+        <span class="modal-close-x" onclick="closeAddModal()">&times;</span>
+        <h2 class="modal-main-title" id="workoutModalTitle"><i class="fas fa-calendar-plus" style="color: var(--cyan);"></i> Новая тренировка</h2>
+        
+        <form id="workoutForm" action="/web/dashboard/add-session" method="post" class="modal-form-styled">
+            <div class="form-group-custom">
+                <label>Программа / Шаблон</label>
+                <select name="template_id" id="workoutTemplateSelect" class="select-styled-dark" required>
+                    {% if templates_list %}
+                        {% for tmpl in templates_list %}
+                            <option value="{{ tmpl.id }}">{{ tmpl.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-group-custom">
+                <label>Название вручную</label>
+                <input type="text" name="custom_name" id="workoutCustomName" class="input-styled-dark" placeholder="Например: Силовой присед">
+            </div>
+
+            <div class="form-group-custom">
+                <label>Дата и время начала</label>
+                <input type="datetime-local" id="addModalDateTime" name="date_time" class="input-styled-dark" required>
+            </div>
+
+            <div class="form-group-custom">
+                <label>Статус</label>
+                <select name="status" id="workoutStatusSelect" class="select-styled-dark">
+                    <option value="planned">Запланировать</option>
+                    <option value="completed">Уже выполнена (засчитать в стрик)</option>
+                </select>
+            </div>
+
+            <button type="submit" id="workoutSubmitBtn" class="btn-prime-neon style-submit-btn">Добавить в расписание</button>
+        </form>
+    </div>
+</div>
+
+<script>
+let activeEventId = null;
+let activeEventData = null;
+let editingSessionId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'ru',
+        firstDay: 1,
+        contentHeight: 580,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+        },
+        slotLabelFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: false,
+            hour12: false
+        },
+
+        eventTimeFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        },
+
+        buttonText: {
+            today: 'Сегодня',
+            month: 'Месяц',
+            week: 'Неделя'
+        },
+        events: '/api/get-workouts',
+        
+        eventContent: function(arg) {
+            let timeText = arg.timeText ? `<span class="fc-ev-time">${arg.timeText}</span>` : '';
+            let titleText = `<span class="fc-ev-title">${arg.event.title}</span>`;
+            
+            return { 
+                html: `<div class="fc-event-custom status-${arg.event.extendedProps.status}">${timeText}${titleText}</div>` 
+            };
+        },
+        
+        // Открытие формы создания
+        dateClick: function(info) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const clickedDate = new Date(info.dateStr);
+            clickedDate.setHours(0, 0, 0, 0);
+            if (clickedDate < today) {
+                return;
+            }
+            openAddModal(info.dateStr);
+        },
+        
+        // Открытие формы управления сессией
+        eventClick: function(info) {
+            activeEventId = String(info.event.id);
+            activeEventData = info.event.extendedProps;
+            openEventModal(
+                info.event.title,
+                info.event.extendedProps.date_raw || info.event.startStr,
+                info.event.extendedProps.status
+            );
+        },
+    });
+    
+    calendar.render();
+});
+
+function resetWorkoutFormToAdd() {
+    editingSessionId = null;
+    const form = document.getElementById('workoutForm');
+    if (!form) return;
+    form.action = '/web/dashboard/add-session';
+    document.getElementById('workoutModalTitle').innerHTML =
+        '<i class="fas fa-calendar-plus" style="color: var(--cyan);"></i> Новая тренировка';
+    document.getElementById('workoutSubmitBtn').textContent = 'Добавить в расписание';
+}
+
+function toDatetimeLocalValue(isoStr) {
+    if (!isoStr) return '';
+    const raw = String(isoStr);
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)) return raw.slice(0, 16);
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0') + 'T' +
+        String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0');
+}
+
+function openEditModal(sessionId, dateStr, data) {
+    if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
+        alert('Не удалось определить тренировку для редактирования');
+        return;
+    }
+
+    editingSessionId = String(sessionId);
+    const form = document.getElementById('workoutForm');
+    form.action = '/web/dashboard/session/' + editingSessionId + '/update';
+    document.getElementById('workoutModalTitle').innerHTML =
+        '<i class="fas fa-edit" style="color: var(--cyan);"></i> Редактировать тренировку';
+    document.getElementById('workoutSubmitBtn').textContent = 'Сохранить изменения';
+
+    document.getElementById('addModalDateTime').value = toDatetimeLocalValue(dateStr);
+    document.getElementById('workoutStatusSelect').value = (data && data.status) || 'planned';
+
+    const tpl = document.getElementById('workoutTemplateSelect');
+    const tid = data && data.template_id != null ? String(data.template_id) : '';
+    let found = false;
+    for (let i = 0; i < tpl.options.length; i++) {
+        if (tpl.options[i].value === tid) {
+            tpl.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    if (!found) tpl.selectedIndex = 0;
+
+    const customInput = document.getElementById('workoutCustomName');
+    if (customInput) customInput.value = '';
+
+    document.getElementById('addWorkoutModal').classList.add('active');
+}
+
+function openAddModal(dateStr) {
+    resetWorkoutFormToAdd();
+    const modal = document.getElementById('addWorkoutModal');
+    const inputTime = document.getElementById('addModalDateTime');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentLocalDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+    inputTime.min = currentLocalDateTime;
+    if (!dateStr.includes("T")) {
+        dateStr += `T${hours}:${minutes}`;
+    }
+    if (dateStr < currentLocalDateTime) {
+        inputTime.value = currentLocalDateTime;
+    } else {
+        inputTime.value = dateStr.substring(0, 16);
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeAddModal() {
+    document.getElementById('addWorkoutModal').classList.remove('active');
+    resetWorkoutFormToAdd();
+}
+
+function openEventModal(title, dateStr, status) {
+    const modal = document.getElementById('eventDetailModal');
+    document.getElementById('modalEventTitle').innerText = title;
+    
+    let formattedDate = dateStr.replace('T', ' Время: ');
+    document.getElementById('modalEventDate').innerText = formattedDate;
+    
+    const statusTxt = document.getElementById('modalEventStatus');
+    const iconEl = document.getElementById('modalEventIcon');
+    
+    const btnMarkComplete = document.getElementById('btnMarkComplete');
+    const btnEditSession = document.getElementById('btnEditSession');
+    const btnDeleteSession = document.getElementById('btnDeleteSession');
+    function setModalBtnVisible(btn, visible) {
+        if (!btn) return;
+        btn.classList.toggle('hidden', !visible);
+    }
+    // Для выполненных тренировок
+    if (status === 'completed') {
+        statusTxt.innerText = "Выполнено";
+        statusTxt.className = "badge status-completed";
+        iconEl.innerHTML = '<i class="fas fa-check-circle" style="color: var(--accent-green);"></i>';
+        
+        setModalBtnVisible(btnMarkComplete, false);
+        setModalBtnVisible(btnEditSession, false);
+        setModalBtnVisible(btnDeleteSession, false);
+        
+    } else if (status === 'missed') {
+        statusTxt.innerText = "Пропущено";
+        statusTxt.className = "badge status-missed";
+        iconEl.innerHTML = '<i class="fas fa-times-circle" style="color: #ff4b2b;"></i>';
+        
+        // Отметить как выполненную нельзя
+        if (btnMarkComplete) btnMarkComplete.style.display = 'none';
+        
+        // Разрешаем перенести (изменить дату) или удалить запись из истории
+        if (btnEditSession) {
+            btnEditSession.style.display = 'inline-flex';
+            btnEditSession.onclick = function() {
+                const sessionId = activeEventId;
+                const data = activeEventData ? { ...activeEventData } : {};
+                document.getElementById('eventDetailModal').classList.remove('active');
+                openEditModal(sessionId, dateStr, data);
+            };
+        }
+        if (btnDeleteSession) btnDeleteSession.style.display = 'inline-flex';
+        
+    } else {
+        // Для запланированных тренировок
+        statusTxt.innerText = "В планах";
+        statusTxt.className = "badge status-planned";
+        iconEl.innerHTML = '<i class="fas fa-hourglass-half" style="color: var(--accent-cyan);"></i>';
+        if (btnEditSession) btnEditSession.style.display = 'inline-flex';
+        if (btnDeleteSession) btnDeleteSession.style.display = 'inline-flex';
+        const now = new Date();
+        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const eventDateStr = dateStr.split('T')[0];
+
+        if (btnMarkComplete) {
+            if (eventDateStr === todayStr) {
+                // Разрешаем выполнять только сегодня
+                btnMarkComplete.style.display = 'inline-flex';
+            } else {
+                btnMarkComplete.style.display = 'none';
+            }
+        }
+        
+        if (btnEditSession) {
+            btnEditSession.onclick = function() {
+                const sessionId = activeEventId;
+                const data = activeEventData ? { ...activeEventData } : {};
+                const eventDate = dateStr;
+                document.getElementById('eventDetailModal').classList.remove('active');
+                openEditModal(sessionId, eventDate, data);
+            };
+        }
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeEventModal() {
+    document.getElementById('eventDetailModal').classList.remove('active');
+}
+
+async function markSessionComplete() {
+    if (!activeEventId) return;
+    
+    try {
+        const res = await fetch('/web/dashboard/session/' + activeEventId + '/complete', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        
+        if (res.ok) { 
+            closeEventModal(); 
+            window.location.reload(); 
+        } else {
+            const errorData = await res.json();
+            
+            const errorMsg = errorData.detail || 'cannot_complete_in_future';
+            
+            closeEventModal();
+            window.location.href = '/dashboard?error=' + encodeURIComponent(errorMsg);
+        }
+    } catch (err) {
+        console.error('Ошибка отправки запроса:', err);
+        window.location.href = '/dashboard?error=' + encodeURIComponent('Произошла ошибка при связи со служебным сервером');
+    }
+}
+
+async function deleteSession() {
+    if (!activeEventId) return;
+    if (!confirm('Удалить эту тренировку из календаря?')) return;
+    const res = await fetch('/web/dashboard/session/' + activeEventId + '/delete', {
+        method: 'POST',
+        credentials: 'same-origin'
+    });
+    if (res.ok) { closeEventModal(); window.location.reload(); }
+}
+
+window.onclick = function(event) {
+    const modalDetail = document.getElementById('eventDetailModal');
+    const modalAdd = document.getElementById('addWorkoutModal');
+    if (event.target === modalDetail) closeEventModal();
+    if (event.target === modalAdd) closeAddModal();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Словарь сообщений для пользователя
+    const errorMessages = {
+        'cannot_plan_in_past': 'Нельзя запланировать тренировку на прошедшее время!',
+        'cannot_complete_in_future': 'Нельзя отмечать тренировку выполненной на будущие дни!',
+        'completed_cannot_be_modified': 'Выполненную тренировку нельзя изменять или удалять!',
+        'invalid_session': 'Тренировка не найдена или у вас нет к ней доступа.'
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorKey = urlParams.get('error');
+    const successKey = urlParams.get('success');
+
+    if (errorKey || successKey) {
+        // Элемент уведомлений
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        
+        if (errorKey) {
+            const message = errorMessages[errorKey] || decodeURIComponent(errorKey);
+            toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ff4b2b;"></i> <span>${message}</span>`;
+        } else if (successKey) {
+            toast.classList.add('success');
+            toast.innerHTML = `<i class="fas fa-check-circle" style="color: var(--green);"></i> <span>${decodeURIComponent(successKey)}</span>`; 
+        }
+        document.body.appendChild(toast);
+        
+        // Звуковое сопровождение при уведомлении
+        try {
+            const audioPath = errorKey ? '/static/sounds/error.mp3' : '/static/sounds/notification.mp3'; 
+            const notificationSound = new Audio(audioPath);
+            notificationSound.volume = 0.4;
+            notificationSound.play();
+        } catch (audioErr) {
+            console.log("Браузер заблокировал автовоспроизведение звука до клика пользователя:", audioErr);
+        }
+
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+});
+</script>
+{% endblock %}

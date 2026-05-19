@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Шаблоны тренировок{% endblock %}
+
+{% block content %}
+<div class="catalog-header-box">
+    <div class="title-section">
+        <h1><i class="fas fa-layer-group"></i> ШАБЛОНЫ <span>ТРЕНИРОВОК</span></h1>
+        <p class="subtitle">Планируй свой прогресс эффективно</p>
+    </div>
+    <a href="/web/templates/create" class="btn-jump create-template-btn">
+        <i class="fas fa-plus"></i> Создать свой шаблон
+    </a>
+</div>
+
+<div class="templates-tabs">
+    <a href="/web/templates?view=my" class="tab-item {% if current_view == 'my' %}active{% endif %}">
+        <i class="fas fa-user"></i> Мои шаблоны
+    </a>
+    <a href="/web/templates?view=app" class="tab-item {% if current_view == 'app' %}active{% endif %}">
+        <i class="fas fa-star"></i> Библиотека
+    </a>
+    <a href="/web/templates?view=community" class="tab-item {% if current_view == 'community' %}active{% endif %}">
+        <i class="fas fa-globe"></i> Сообщество
+    </a>
+</div>
+
+<div class="search-section card-metallic">
+    <form action="/web/templates" method="get" class="search-form-group">
+        <input type="hidden" name="view" value="{{ current_view }}">
+        
+        <div class="search-input-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" name="search" class="search-input" placeholder="Поиск по названию..." value="{{ search_query or '' }}">
+        </div>
+
+        <select name="category" class="category-select-styled">
+            <option value="Все">Все категории</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn-jump">Найти</button>
+        
+        {% if search_query or (selected_category and selected_category != 'Все') %}
+            <a href="/web/templates?view={{ current_view }}" class="btn-reset">
+                <i class="fas fa-undo-alt"></i> Сбросить
+            </a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="templates-grid">
+    {% for t in templates %}
+    <div class="template-card card-metallic">
+        <div class="template-badge">
+            {% if t.category == 'Силовая' %}
+                <i class="fas fa-dumbbell"></i>
+            {% elif t.category == 'Кардио' %}
+                <i class="fas fa-running"></i>
+            {% elif t.category == 'Растяжка' %}
+                <i class="fas fa-child"></i>
+            {% elif t.category == 'Йога' %}
+                <i class="fas fa-spa"></i>
+            {% else %}
+                <i class="fas fa-fire"></i>
+            {% endif %}
+            <span>{{ t.category }}</span>
+        </div>
+        <div class="template-info">
+            <h3>{{ t.name }}</h3>
+            <p class="author">
+                {% if current_view == 'my' %}Вы автор{% else %}Автор: {{ t.author_name or 'System' }}{% endif %}
+            </p>
+            <p class="desc">{{ t.description or 'Описание отсутствует...' }}</p>
+        </div>
+        <div class="template-footer">
+            <a href="/web/templates/{{ t.id }}" class="btn-details-outline">Открыть</a>
+            
+            {% if current_view == 'my' %}
+                <div class="author-controls">
+                    <a href="/web/templates/edit/{{ t.id }}" class="btn-icon-action edit" title="Редактировать">
+                        <i class="fas fa-pen"></i>
+                    </a>
+                    <a href="/web/templates/delete/{{ t.id }}" 
+                       class="btn-icon-action delete" 
+                       title="Удалить"
+                       onclick="return confirm('Ты уверен, что хочешь безвозвратно удалить этот шаблон?')">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                </div>
+                <span class="visibility-status">
+                    <i class="fas {% if t.is_public %}fa-eye{% else %}fa-eye-slash{% endif %}"></i>
+                    {{ 'Публичный' if t.is_public else 'Приватный' }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+    </div>
+    {% endfor %}
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Считываем параметры success или error из адресной строки
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMsg = urlParams.get('error');
+        const successMsg = urlParams.get('success');
+    
+        if (errorMsg || successMsg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            
+            if (errorMsg) {
+                toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ff4b2b;"></i> <span>${decodeURIComponent(errorMsg)}</span>`;
+            } else if (successMsg) {
+                toast.classList.add('success');
+                toast.innerHTML = `<i class="fas fa-check-circle" style="color: var(--green, #00ff88);"></i> <span>${decodeURIComponent(successMsg)}</span>`;
+            }
+            
+            document.body.appendChild(toast);
+            
+            try {
+                const audioPath = errorMsg ? '/static/sounds/error.mp3' : '/static/sounds/notification.mp3';
+                const notificationSound = new Audio(audioPath);
+                notificationSound.volume = 0.15;
+                notificationSound.play();
+            } catch (audioErr) {
+                console.log("Автовоспроизведение звука заблокировано браузером до клика:", audioErr);
+            }
+    
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    
+            setTimeout(() => toast.classList.add('show'), 100);
+    
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+    });
+</script>
+{% endblock %}

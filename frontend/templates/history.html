@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}История тренировок{% endblock %}
+
+{% block content %}
+<div class="template-container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <div class="catalog-header-box" style="margin-bottom: 30px; text-align: left; padding-left: 5px;">
+        <h1><i class="fas fa-history"></i> ЖУРНАЛ <span>ТРЕНИРОВОК</span></h1>
+        <p style="color: #888; margin-top: 5px;">Архив выполненных вами занятий и упражнений</p>
+    </div>
+    <div class="form-card" style="background: #111; border: 1px solid #222; border-radius: 10px; padding: 15px 20px; margin-bottom: 25px;">
+        <form method="get" action="/web/history" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            
+            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px;">
+                <label style="color: #888; font-size: 0.85rem;"><i class="far fa-calendar-alt"></i> Дата с:</label>
+                <input type="date" name="date_from" value="{{ date_from or '' }}" class="input-styled" style="background: #0a0a0a; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 5px; width: 100%;">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px;">
+                <label style="color: #888; font-size: 0.85rem;"><i class="far fa-calendar-alt"></i> Дата по:</label>
+                <input type="date" name="date_to" value="{{ date_to or '' }}" class="input-styled" style="background: #0a0a0a; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 5px; width: 100%;">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-primary" style="background: var(--green, #00ff88); color: #000; border: none; padding: 9px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: all 0.3s;">
+                    <i class="fas fa-filter"></i> Фильтр
+                </button>
+                
+                {% if date_from or date_to %}
+                    <a href="/web/history" class="btn-secondary-dark" style="text-decoration: none; background: #222; color: #aaa; border: 1px solid #333; padding: 8px 15px; border-radius: 5px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; transition: all 0.3s;">
+                        <i class="fas fa-times"></i> Сбросить
+                    </a>
+                {% endif %}
+            </div>
+            
+        </form>
+    </div>
+    {% if not sessions %}
+        <div class="form-card" style="text-align: center; padding: 40px; border: 1px dashed #333;">
+            <i class="fas fa-dumbbell" style="font-size: 3rem; color: #444; margin-bottom: 15px;"></i>
+            <h3 style="color: #fff; margin-bottom: 10px;">История пока пуста</h3>
+            <p style="color: #888; margin-bottom: 20px;">Завершите свою первую тренировку в календаре, чтобы зафиксировать результаты!</p>
+        </div>
+    {% else %}
+        <div class="history-list" style="display: flex; flex-direction: column; gap: 15px;">
+            {% for session in sessions %}
+            <div class="" style="background: #111; border: 1px solid #222; border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.3s ease;">
+                    
+                    <div class="history-header" onclick="toggleHistoryCard(this)" style="padding: 20px; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="category-badge" style="background: #222; color: var(--green, #00ff88); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #333;">
+                                {{ session.category or 'Общая' }}
+                            </div>
+                            <div>
+                                <h3 style="color: #fff; margin: 0; font-size: 1.1rem;">{{ session.name }}</h3>
+                                <span style="color: #666; font-size: 0.85rem;">
+                                    <i class="far fa-calendar-alt"></i> {{ session.formatted_date }} {% if session.formatted_time %}<i class="far fa-clock" style="margin-left: 10px;"></i> {{ session.formatted_time }}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span style="color: #666; font-size: 0.9rem;">
+                                {{ session.exercises|length }} {{ 'упражнение' if session.exercises|length == 1 else 'упражнений' if session.exercises|length < 5 else 'упражнений' }}
+                            </span>
+                            <i class="fas fa-chevron-down arrow-icon" style="color: #555; transition: transform 0.3s ease;"></i>
+                        </div>
+                    </div>
+
+                    <div class="history-content" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; background: #0a0a0a; border-top: 0 solid #222;">
+                        <div style="padding: 20px;">
+                            {% if not session.exercises %}
+                                <p style="color: #666; font-style: italic; margin: 0; text-align: center;">Данные об упражнениях для этой тренировки не были зафиксированы.</p>
+                            {% else %}
+                                <div style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+                                        <thead>
+                                            <tr style="border-bottom: 2px solid #222; color: #888;">
+                                                <th style="padding: 10px 5px;">Упражнение</th>
+                                                <th style="padding: 10px 5px; text-align: center;">Подходы</th>
+                                                <th style="padding: 10px 5px; text-align: center;">Повторения</th>
+                                                <th style="padding: 10px 5px; text-align: right;">Вес (кг)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for ex in session.exercises %}
+                                                <tr style="border-bottom: 1px solid #1a1a1a; color: #e0e0e0; transition: background 0.2s;">
+                                                    <td style="padding: 12px 5px; font-weight: bold; color: #fff;">{{ ex.exercise_name }}</td>
+                                                    <td style="padding: 12px 5px; text-align: center; color: var(--green, #00ff88);">{{ ex.sets }}</td>
+                                                    <td style="padding: 12px 5px; text-align: center;">{{ ex.reps }}</td>
+                                                    <td style="padding: 12px 5px; text-align: right; font-weight: bold; color: #ffb86c;">{{ ex.weight }} кг</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleHistoryCard(header) {
+    const card = header.parentElement;
+    const content = card.querySelector('.history-content');
+    const arrow = card.querySelector('.arrow-icon');
+    document.querySelectorAll('.history-content').forEach(el => {
+        if (el !== content && el.style.maxHeight !== '0px' && el.style.maxHeight !== '') {
+            el.style.maxHeight = '0px';
+            el.parentElement.querySelector('.arrow-icon').style.transform = 'rotate(0deg)';
+            el.parentElement.style.borderColor = '#222';
+            el.style.borderTopWidth = '0px';
+        }
+    });
+
+    // Переключаем текущую карточку
+    if (content.style.maxHeight === '0px' || content.style.maxHeight === '') {
+        content.style.maxHeight = content.scrollHeight + "px";
+        arrow.style.transform = 'rotate(180deg)';
+        card.style.borderColor = 'var(--green, #00ff88)';
+        content.style.borderTopWidth = '1px';
+    } else {
+        content.style.maxHeight = '0px';
+        arrow.style.transform = 'rotate(0deg)';
+        card.style.borderColor = '#222';
+        content.style.borderTopWidth = '0px';
+    }
+}
+</script>
+{% endblock %}

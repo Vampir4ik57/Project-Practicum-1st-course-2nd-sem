@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Калькулятор блинов{% endblock %}
+
+{% block content %}
+<div class="template-container">
+    <div class="catalog-header-box">
+        <h1><i class="fas fa-compact-disc"></i> КАЛЬКУЛЯТОР <span>БЛИНОВ</span></h1>
+    </div>
+
+    <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <div class="form-card card-accent-blue" style="flex: 1; min-width: 320px; max-width: 500px;">
+            <h3 class="card-title"><i class="fas fa-cog"></i> Параметры штанги</h3>
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="stepper-label" style="margin-bottom: 8px;">Вес грифа</label>
+                <select id="barbellWeight" class="input-styled" onchange="calculatePlates()">
+                    <option value="20">Олимпийский гриф (20 кг)</option>
+                    <option value="15">Женский олимпийский гриф (15 кг)</option>
+                    <option value="10">Тренировочный (10 кг)</option>
+                    <option value="0">Без грифа (чистый вес блинов)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="stepper-label" style="margin-bottom: 8px;">Целевой вес (кг)</label>
+                <input type="number" id="targetWeight" class="input-styled" style="background-image: none !important; padding-right: 12px !important;" placeholder="Например: 100" step="2.5" min="0" oninput="calculatePlates()">
+            </div>
+
+            <div id="calcError" style="color: #ff4b2b; background: rgba(255, 75, 43, 0.1); padding: 10px; border-radius: 8px; margin-top: 15px; font-size: 13px; display: none;">
+                <i class="fas fa-exclamation-circle"></i> <span id="errorText"></span>
+            </div>
+        </div>
+
+        <div id="calcResultBox" class="form-card" style="flex: 1; min-width: 320px; max-width: 500px; display: none;">
+            <h3 class="card-title" style="color: var(--cyan);"><i class="fas fa-dumbbell"></i> Навеска на ОДНУ сторону</h3>
+            <div id="platesList" style="display: flex; flex-direction: column; gap: 10px;">
+                </div>
+            
+            <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; color: #888;">
+                Остаток, который невозможно навесить: <strong id="calcRemainder" style="color: #ffb703;">0</strong> кг.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function calculatePlates() {
+    const barbell = parseFloat(document.getElementById('barbellWeight').value) || 0;
+    const target = parseFloat(document.getElementById('targetWeight').value) || 0;
+    
+    const errorBox = document.getElementById('calcError');
+    const errorText = document.getElementById('errorText');
+    const resultBox = document.getElementById('calcResultBox');
+    const platesList = document.getElementById('platesList');
+    const remainderEl = document.getElementById('calcRemainder');
+
+    // Сброс окон
+    errorBox.style.display = 'none';
+    resultBox.style.display = 'none';
+    platesList.innerHTML = '';
+
+    if (!target || target <= 0) return;
+
+    if (target < barbell) {
+        errorText.innerText = `Целевой вес меньше веса самого грифа (${barbell} кг)!`;
+        errorBox.style.display = 'block';
+        return;
+    }
+
+    let weightToSet = target - barbell;
+    let sideWeight = weightToSet / 2;
+
+    const availablePlates = [25, 20, 15, 10, 5, 2.5, 1.25];
+    const platesDistribution = {};
+
+    for (let plate of availablePlates) {
+        if (sideWeight >= plate) {
+            const count = Math.floor(sideWeight / plate);
+            platesDistribution[plate] = count;
+            sideWeight = (sideWeight % plate);
+            
+            if (sideWeight < 0.01) sideWeight = 0;
+        }
+    }
+
+    if (Object.keys(platesDistribution).length > 0 || sideWeight >= 0) {
+        resultBox.style.display = 'block';
+        
+        for (let plate in platesDistribution) {
+            const count = platesDistribution[plate];
+            const item = document.createElement('div');
+            item.className = 'plate-item';
+            
+            let lineColor = 'var(--cyan)';
+            if (plate >= 25) lineColor = '#ff4b2b';      /* Тяжелые - красные */
+            else if (plate >= 20) lineColor = '#ffb703'; /* 20 кг - желтые */
+            else if (plate >= 10) lineColor = '#00ff88'; /* 10-15 кг - зеленые */
+            
+            item.style.cssText = `
+                display: flex; align-items: center; justify-content: space-between;
+                background: rgba(255, 255, 255, 0.02); padding: 12px 18px;
+                border-radius: 8px; border-left: 4px solid ${lineColor};
+                border-top: 1px solid rgba(255,255,255,0.01);
+            `;
+            
+            item.innerHTML = `
+                <div style="font-weight: 800; color: #fff; font-size: 1.05rem;">${plate} кг</div>
+                <div style="font-size: 0.9rem; color: #888;">Надо надеть: <span style="color: ${lineColor}; font-weight: 800; font-size: 1.1rem; margin-left: 5px;">${count} шт.</span></div>
+            `;
+            platesList.appendChild(item);
+        }
+        
+        remainderEl.innerText = (sideWeight * 2).toFixed(2);
+    }
+}
+</script>
+{% endblock %}

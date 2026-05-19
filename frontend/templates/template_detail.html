@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ template.name }}{% endblock %}
+
+{% block content %}
+<div class="template-container">
+    <div class="catalog-header-box" style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="margin-bottom: 5px;"><i class="fas fa-clipboard-list"></i> {{ template.name | upper }}</h1>
+            <span style="color: #888; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                Категория: <span style="color: var(--cyan-accent);">{{ template.category }}</span>
+            </span>
+        </div>
+        <div style="padding: 10px 15px; border-radius: 8px; border: 1px solid #333; background: #0f0f11;">
+            {% if template.is_public %}
+                <i class="fas fa-globe" style="color: var(--cyan-accent);"></i> <span style="color: #fff; font-size: 13px; font-weight: bold; margin-left: 5px;">В сообществе</span>
+            {% else %}
+                <i class="fas fa-lock" style="color: #666;"></i> <span style="color: #aaa; font-size: 13px; font-weight: bold; margin-left: 5px;">Приватный</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="template-grid" style="grid-template-columns: 1fr;">
+        {% if template.description %}
+        <div class="form-card" style="padding: 20px 30px; margin-bottom: -10px;">
+            <h3 class="card-title" style="margin-bottom: 10px; font-size: 0.75rem;"><i class="fas fa-info-circle"></i> Описание</h3>
+            <p style="color: #ccc; line-height: 1.6; font-size: 15px; margin: 0;">{{ template.description }}</p>
+        </div>
+        {% endif %}
+
+        <div class="form-card">
+            <h3 class="card-title"><i class="fas fa-dumbbell"></i> Состав тренировки</h3>
+            
+            {% for ex in exercises %}
+            <div class="exercise-item" style="display: flex; justify-content: space-between; align-items: center; border-left-color: var(--cyan-accent);">
+                <div style="flex: 2; color: #fff; font-weight: bold; font-size: 16px;">
+                    <span style="color: var(--cyan-accent); margin-right: 10px; font-size: 12px;">{{ loop.index }}.</span> {{ ex.name }}
+                </div>
+                
+                <div style="flex: 3; display: flex; gap: 15px; justify-content: flex-end;">
+                    <div style="background: #000; padding: 12px; border-radius: 8px; border: 1px solid #333; text-align: center; min-width: 90px;">
+                        <div style="font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 6px; font-weight: bold;">Подходы</div>
+                        <div style="color: #fff; font-weight: bold; font-size: 16px;">{{ ex.sets }}</div>
+                    </div>
+                    <div style="background: #000; padding: 12px; border-radius: 8px; border: 1px solid #333; text-align: center; min-width: 90px;">
+                        <div style="font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 6px; font-weight: bold;">Повторения</div>
+                        <div style="color: #fff; font-weight: bold; font-size: 16px;">{{ ex.reps }}</div>
+                    </div>
+                    <div style="background: #000; padding: 10px; border-radius: 8px; border: 1px solid #222; text-align: center;">
+                        <div style="font-size: 10px; color: var(--cyan-accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: 800;">Вес (кг)</div>
+                        <div style="color: #fff; font-weight: bold; font-size: 16px;">
+                            {% if ex.weight and ex.weight > 0 %}
+                                {{ ex.weight }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: #888; text-align: center; padding: 20px;">В этом шаблоне пока нет упражнений.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="form-actions" style="margin-top: 30px; display: flex; justify-content: flex-end;">
+        <a href="javascript:history.back()" class="btn-save-main" style="text-decoration: none; text-align: center; display: inline-block;">
+            <i class="fas fa-arrow-left" style="margin-right: 8px;"></i> ВЕРНУТЬСЯ НАЗАД
+        </a>
+    </div>
+</div>
+{% endblock %}

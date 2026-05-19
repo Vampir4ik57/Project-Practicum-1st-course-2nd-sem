@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Обратная связь{% endblock %}
+
+{% block content %}
+<div class="template-container">
+    <div class="catalog-header-box">
+        <h1><i class="fas fa-comment-alt"></i> ОБРАТНАЯ <span>СВЯЗЬ</span></h1>
+    </div>
+
+    <div class="form-card card-accent-blue" style="max-width: 600px; margin-top: 20px;">
+        <h3 class="card-title"><i class="fas fa-paper-plane"></i> Отправить отзыв</h3>
+        
+        <form action="/web/feedback/send" method="post" class="modal-form-styled">
+            
+            <div class="form-group-custom">
+                <label class="stepper-label">Ваша оценка приложению</label>
+                <div class="rating-stars-container" style="display: flex; gap: 10px; font-size: 1.8rem; margin: 5px 0;">
+                    <i class="far fa-star star-btn" data-value="1" style="color: #ffb703; cursor: pointer;"></i>
+                    <i class="far fa-star star-btn" data-value="2" style="color: #ffb703; cursor: pointer;"></i>
+                    <i class="far fa-star star-btn" data-value="3" style="color: #ffb703; cursor: pointer;"></i>
+                    <i class="far fa-star star-btn" data-value="4" style="color: #ffb703; cursor: pointer;"></i>
+                    <i class="far fa-star star-btn" data-value="5" style="color: #ffb703; cursor: pointer;"></i>
+                </div>
+                <input type="hidden" name="rating" id="ratingValue" value="5">
+            </div>
+
+            <div class="form-group-custom">
+                <label class="stepper-label">Тема сообщения</label>
+                <input type="text" name="subject" class="input-styled-dark" placeholder="Например: Предложение по улучшению, Баг">
+            </div>
+
+            <div class="form-group-custom">
+                <label class="stepper-label">Ваш отзыв / Текст сообщения</label>
+                <textarea name="message" class="input-styled-dark" rows="5" placeholder="Опишите ваши впечатления или проблему..." style="resize: none;" required></textarea>
+            </div>
+
+            <button type="submit" class="btn-prime-neon style-submit-btn" style="margin-top: 10px;">Отправить отзыв</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star-btn');
+    const ratingInput = document.getElementById('ratingValue');
+
+    function highlightStars(rating) {
+        stars.forEach(star => {
+            const val = parseInt(star.getAttribute('data-value'));
+            if (val <= rating) {
+                star.classList.remove('far');
+                star.classList.add('fas'); // Закрашенная звезда
+            } else {
+                star.classList.remove('fas');
+                star.classList.add('far'); // Пустая звезда
+            }
+        });
+    }
+
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const val = parseInt(this.getAttribute('data-value'));
+            ratingInput.value = val;
+            highlightStars(val);
+        });
+
+        star.addEventListener('mouseover', function() {
+            const val = parseInt(this.getAttribute('data-value'));
+            highlightStars(val);
+        });
+    });
+
+    document.querySelector('.rating-stars-container').addEventListener('mouseleave', function() {
+        highlightStars(parseInt(ratingInput.value));
+    });
+
+    // Инициализация (по умолчанию 5 звёзд)
+    highlightStars(5);
+    // Уведомление после отправки формы
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMsg = urlParams.get('error');
+    const successMsg = urlParams.get('success');
+
+    if (errorMsg || successMsg) {
+        // Создаем плашку уведомления
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        
+        if (errorMsg) {
+            toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ff4b2b;"></i> <span>${decodeURIComponent(errorMsg)}</span>`;
+        } else if (successMsg) {
+            toast.classList.add('success');
+            toast.innerHTML = `<i class="fas fa-check-circle" style="color: var(--green, #00ff88);"></i> <span>${decodeURIComponent(successMsg)}</span>`;
+        }
+        
+        document.body.appendChild(toast);
+        
+        try {
+            const audioPath = errorMsg ? '/static/sounds/error.mp3' : '/static/sounds/notification.mp3';
+            const notificationSound = new Audio(audioPath);
+            notificationSound.volume = 0.15;
+            notificationSound.play();
+        } catch (audioErr) {
+            console.log("Автовоспроизведение звука заблокировано браузером:", audioErr);
+        }
+
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+});
+</script>
+{% endblock %}

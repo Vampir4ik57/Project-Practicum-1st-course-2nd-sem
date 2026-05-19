@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="template-container">
+    <div class="catalog-header-box">
+        <h1><i class="fas fa-user-circle"></i> МОЙ <span>ПРОФИЛЬ</span></h1>
+    </div>
+
+    <div class="form-card profile-header-card">
+        <div class="profile-main-info">
+            <div class="avatar-container" onclick="document.getElementById('avatarInput').click();">
+                <div class="avatar-wrapper">
+                    <img src="{{ user.avatar_url or '/static/images/default-avatar.jpg' }}" alt="Avatar" class="profile-avatar">
+                    <div class="avatar-glow"></div>
+                    <div class="avatar-overlay">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                </div>
+                <form id="avatarForm" action="/web/profile/upload-avatar" method="post" enctype="multipart/form-data" style="display:none;">
+                    <input type="file" id="avatarInput" name="file" accept="image/*" onchange="document.getElementById('avatarForm').submit();">
+                </form>
+            </div>
+    
+            <div class="user-text-info">
+                <h2 class="user-name">{{ user.name or user.username }}</h2>
+                <div class="user-meta">
+                    <i class="far fa-calendar-alt"></i> В строю с: <span>{{ user.created_date }}</span>
+                </div>
+                <div class="user-status">
+                    <span class="status-online-dot"></span> Online
+                </div>
+            </div>
+        </div>
+    
+        <div class="streak-badge">
+            <div class="streak-icon"><i class="fas fa-fire"></i></div>
+            <div class="streak-details">
+                <span class="streak-number">{{ user.current_streak or 0 }}</span>
+                <span class="streak-label">НЕДЕЛЬ ПОДРЯД</span>
+            </div>
+        </div>
+    </div>
+    
+        <div style="display: flex; flex-direction: column; gap: 30px;">
+            
+            <div class="form-card">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Динамика веса</h3>
+                
+                <div class="weight-chart-container">
+                    <canvas id="weightChart"></canvas>
+                </div>
+                
+                <form action="/web/profile/add-weight" method="post" class="weight-add-form" style="margin-top: 15px;">
+                    <input type="number" step="0.1" name="weight" class="input-styled" placeholder="Твой вес (кг)" required>
+                    <button type="submit" class="btn-save-main">ОБНОВИТЬ</button>
+                </form>
+            </div>
+    
+            <div class="form-card card-accent-blue">
+                <h3 class="card-title"><i class="fas fa-shield-alt"></i> Безопасность</h3>
+                
+                {% if error %}
+                    <div class="alert" style="color: #ff4b2b; background: rgba(255, 75, 43, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
+                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                    </div>
+                {% endif %}
+                {% if success %}
+                    <div class="alert" style="color: #00ff88; background: rgba(0, 255, 136, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
+                        <i class="fas fa-check-circle"></i> {{ success }}
+                    </div>
+                {% endif %}
+            
+                <form action="/web/profile/update-settings" method="post" class="settings-form" id="settingsForm">
+                    <div class="form-group">
+                        <label class="stepper-label">Ваш логин</label>
+                        <input type="text" class="input-styled" value="{{ user.username }}" disabled style="opacity: 0.5;">
+                    </div>
+            
+                    <div class="form-group">
+                        <label class="stepper-label">Текущий пароль <span style="color: #ff4b2b;">*</span></label>
+                        <input type="password" name="current_password" id="currentPass" class="input-styled" placeholder="Введите пароль для подтверждения" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="stepper-label"> Цель: тренировок в неделю</label>
+                        <select id="weeklyGoal" name="weekly_goal" class="input-styled" data-original="{{ user.weekly_goal if user.weekly_goal else 3 }}">
+                            {% set current_goal = user.weekly_goal if user.weekly_goal else 3 %}
+                            <option value="1" {% if current_goal == 1 %}selected{% endif %}>1 день в неделю</option>
+                            <option value="2" {% if current_goal == 2 %}selected{% endif %}>2 дня в неделю</option>
+                            <option value="3" {% if current_goal == 3 %}selected{% endif %}>3 дня в неделю</option>
+                            <option value="4" {% if current_goal == 4 %}selected{% endif %}>4 дня в неделю</option>
+                            <option value="5" {% if current_goal == 5 %}selected{% endif %}>5 дней в неделю</option>
+                            <option value="6" {% if current_goal == 6 %}selected{% endif %}>6 дней в неделю</option>
+                            <option value="7" {% if current_goal == 7 %}selected{% endif %}>Каждый день (7 дней)</option>
+                        </select>
+                    </div>
+                
+                    <div class="form-group">
+                        <label class="stepper-label">Отображаемое имя</label>
+                        <input type="text" name="name" id="userName" class="input-styled" value="{{ user.name or '' }}" data-original="{{ user.name or '' }}">
+                    </div>
+                
+                    <div class="form-group">
+                        <label class="stepper-label">Новый пароль</label>
+                        <input type="password" name="new_password" id="newPass" class="input-styled" placeholder="Оставьте пустым, если не меняете" minlength="6" maxlength="20">
+                    </div>
+                    
+                    <button type="submit" id="saveBtn" class="btn-save-main" style="width: 100%; margin-top: 10px;">
+                        СОХРАНИТЬ ДАННЫЕ
+                    </button>
+                </form>
+            
+                <a href="/web/logout" class="btn-logout-main" style="display: block; text-align: center; text-decoration: none; margin-top: 15px;">
+                    <i class="fas fa-sign-out-alt"></i> ВЫЙТИ ИЗ АККАУНТА
+                </a>
+            </div>
+    
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="application/json" id="weight-chart-data">{{ {"labels": labels, "values": values} | tojson }}</script>
+<script>
+    const chartFont = "'Segoe UI', system-ui, -apple-system, Tahoma, Geneva, Verdana, sans-serif";
+    const weightChartPayload = JSON.parse(document.getElementById('weight-chart-data').textContent);
+    const weightDatesIso = weightChartPayload.labels;
+
+    function parseChartDate(iso) {
+        if (!iso || typeof iso !== 'string') return null;
+        const d = new Date(iso.trim() + 'T12:00:00');
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    const weightLabelsDisplay = weightDatesIso.map(function (iso) {
+        const d = parseChartDate(iso);
+        return d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : String(iso);
+    });
+
+    const ctx = document.getElementById('weightChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: weightLabelsDisplay,
+            datasets: [{
+                label: 'Вес',
+                data: weightChartPayload.values,
+                borderColor: '#00d2ff',
+                backgroundColor: 'rgba(0, 210, 255, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#00d2ff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 22, 28, 0.92)',
+                    titleColor: '#b8e8f5',
+                    bodyColor: '#e8f4f8',
+                    borderColor: 'rgba(0, 210, 255, 0.35)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    titleFont: { family: chartFont, size: 13, weight: '600' },
+                    bodyFont: { family: chartFont, size: 14, weight: '500' },
+                    displayColors: false,
+                    callbacks: {
+                        title: function (items) {
+                            const i = items[0].dataIndex;
+                            const d = parseChartDate(weightDatesIso[i]);
+                            return d
+                                ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : String(weightDatesIso[i] || '');
+                        },
+                        label: function (item) {
+                            const v = Number(item.raw);
+                            const s = Number.isInteger(v) ? String(v) : v.toFixed(1);
+                            return 'Вес: ' + s + ' кг';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grace: '10%',
+                    grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                    border: { display: false },
+                    ticks: {
+                        color: 'rgba(180, 220, 235, 0.85)',
+                        padding: 10,
+                        font: { family: chartFont, size: 13, weight: '600' },
+                        callback: function (value) {
+                            const n = Number(value);
+                            const s = Number.isInteger(n) ? String(n) : n.toFixed(1);
+                            return s + ' кг';
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    border: { color: 'rgba(0, 210, 255, 0.2)' },
+                    ticks: {
+                        color: 'rgba(200, 230, 242, 0.9)',
+                        padding: 12,
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8,
+                        font: { family: chartFont, size: 12, weight: '600' }
+                    }
+                }
+            }
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('settingsForm');
+        const nameInput = document.getElementById('userName');
+        const newPassInput = document.getElementById('newPass');
+        const goalSelect = document.getElementById('weeklyGoal');
+        const saveBtn = document.getElementById('saveBtn');
+    
+        const originalName = nameInput.getAttribute('data-original');
+        const originalGoal = goalSelect.getAttribute('data-original');
+    
+        function checkChanges() {
+            const isNameChanged = nameInput.value !== originalName;
+            const isPassChanged = newPassInput.value.length > 0;
+            const isGoalChanged = goalSelect.value !== originalGoal;
+            
+            // Кнопка будет активной, если хоть что-то изменилось
+            if (isNameChanged || isPassChanged || isGoalChanged) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = "1";
+                saveBtn.style.cursor = "pointer";
+            } else {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = "0.5";
+                saveBtn.style.cursor = "not-allowed";
+            }
+        }
+    
+        nameInput.addEventListener('input', checkChanges);
+        newPassInput.addEventListener('input', checkChanges);
+        goalSelect.addEventListener('change', checkChanges);
+        
+        // Инициализация при загрузке
+        checkChanges();
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('settingsForm');
+        const nameInput = document.getElementById('userName');
+        const newPassInput = document.getElementById('newPass');
+        const saveBtn = document.getElementById('saveBtn');
+    
+        const originalName = nameInput.getAttribute('data-original');
+    
+        function checkChanges() {
+            const isNameChanged = nameInput.value !== originalName;
+            const isPassChanged = newPassInput.value.length > 0;
+            
+            if (isNameChanged || isPassChanged) {
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = "1";
+            } else {
+                saveBtn.disabled = true;
+                saveBtn.style.opacity = "0.5";
+            }
+        }
+    
+        nameInput.addEventListener('input', checkChanges);
+        newPassInput.addEventListener('input', checkChanges);
+        
+        // Инициализация при загрузке
+        checkChanges();
+    });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Считываем параметры success или error из адресной строки
+            const urlParams = new URLSearchParams(window.location.search);
+            const errorMsg = urlParams.get('error');
+            const successMsg = urlParams.get('success');
+        
+            if (errorMsg || successMsg) {
+                const toast = document.createElement('div');
+                toast.className = 'toast-notification';
+                
+                if (errorMsg) {
+                    toast.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ff4b2b;"></i> <span>${decodeURIComponent(errorMsg)}</span>`;
+                } else if (successMsg) {
+                    toast.classList.add('success');
+                    toast.innerHTML = `<i class="fas fa-check-circle" style="color: var(--green, #00ff88);"></i> <span>${decodeURIComponent(successMsg)}</span>`;
+                }
+                
+                document.body.appendChild(toast);
+                
+                try {
+                    const audioPath = errorMsg ? '/static/sounds/error.mp3' : '/static/sounds/notification.mp3';
+                    const notificationSound = new Audio(audioPath);
+                    notificationSound.volume = 0.15;
+                    notificationSound.play();
+                } catch (audioErr) {
+                    console.log("Автовоспроизведение звука заблокировано браузером до клика:", audioErr);
+                }
+        
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+        
+                setTimeout(() => toast.classList.add('show'), 100);
+        
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 400);
+                }, 4000);
+            }
+        });
+    </script>
+{% endblock %}

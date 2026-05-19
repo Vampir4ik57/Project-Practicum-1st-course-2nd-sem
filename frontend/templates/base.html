@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Workout Planner{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <!-- Боковой сайдбар -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><span>GYMBRO</span></div>
+        </div>
+        <ul class="nav-links">
+            <li class="{% if request.url.path == '/dashboard' %}active-page{% endif %}">
+                <a href="/dashboard"><i class="fas fa-calendar-alt"></i> Календарь</a>
+            </li>
+            <li class="{% if '/templates' in request.url.path %}active-page{% endif %}">
+                <a href="/web/templates"><i class="fas fa-layer-group"></i> Шаблоны</a>
+            </li>
+            <li class="{% if '/exercises' in request.url.path %}active-page{% endif %}">
+                <a href="/web/exercises"><i class="fas fa-dumbbell"></i> Упражнения</a>
+            </li>
+            <li class="{% if '/plates-calculator' in request.url.path %}active-page{% endif %}">
+                <a href="/web/plates-calculator"><i class="fas fa-compact-disc"></i> Калькулятор блинов</a>
+            </li>
+            <li class="{% if '/history' in request.url.path %}active-page{% endif %}">
+                <a href="/web/history"><i class="fas fa-history"></i> История</a>
+            </li>
+            <li class="{% if '/profile' in request.url.path %}active-page{% endif %}">
+                <a href="/web/profile"><i class="fas fa-user"></i> Профиль</a>
+            </li>
+            <li class="{% if '/feedback' in request.url.path %}active-page{% endif %}">
+                <a href="/web/feedback"><i class="fas fa-comment-alt"></i> Обратная связь</a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="/" class="btn-logout-sidebar"><i class="fas fa-sign-out-alt"></i> Выйти</a>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
