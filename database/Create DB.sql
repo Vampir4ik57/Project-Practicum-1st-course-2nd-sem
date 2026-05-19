@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT,
     created_date TEXT NOT NULL DEFAULT (datetime('now')),
     current_streak INTEGER NOT NULL DEFAULT 0,
-    last_workout_date TEXT
+    last_workout_date TEXT,
+    avatar_url TEXT DEFAULT '/static/images/default-avatar.jpg',
+    weekly_goal INTEGER DEFAULT 3
 );
 
 CREATE TABLE IF NOT EXISTS exercises (
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS workout_sessions (
     date TEXT NOT NULL,
     times INTEGER,
     notes TEXT,
-    status TEXT NOT NULL CHECK (status IN ('planned', 'completed')),
+    status TEXT NOT NULL CHECK (status IN ('planned', 'completed', 'missed')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES workout_templates(id) ON DELETE SET NULL
 );
@@ -72,8 +74,18 @@ CREATE TABLE IF NOT EXISTS weight_log (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_workout_sessions_user_date ON workout_sessions(user_id, date);
-CREATE INDEX idx_workout_sessions_status ON workout_sessions(status);
-CREATE INDEX idx_session_exercises_session ON session_exercises(session_id);
-CREATE INDEX idx_template_exercises_template ON template_exercises(template_id);
-CREATE INDEX idx_weight_log_user_date ON weight_log(user_id, date);
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    subject TEXT,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_date ON workout_sessions(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_workout_sessions_status ON workout_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_session_exercises_session ON session_exercises(session_id);
+CREATE INDEX IF NOT EXISTS idx_template_exercises_template ON template_exercises(template_id);
+CREATE INDEX IF NOT EXISTS idx_weight_log_user_date ON weight_log(user_id, date);
