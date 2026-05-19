@@ -41,3 +41,31 @@ Project-Practicum-1st-course-2nd-sem/
 │   └── templates/           # HTML-шаблоны Jinja2
 ├── requirements.txt         # Зависимости проекта
 └── README.md                # Документация
+```
+## Инструкция по локальному запуску
+1. Клонирование репозитория:
+* git clone [https://github.com/ВАШ_ЛОГИН/Project-Practicum-1st-course-2nd-sem.git](https://github.com/ВАШ_ЛОГИН/Project-Practicum-1st-course-2nd-sem.git)
+* cd Project-Practicum-1st-course-2nd-sem
+2. Создание и активация виртуального окружения:
+**Для Windows:**
+* python -m venv venv
+* venv\Scripts\activate
+
+**Для macOS / Linux:**
+* python3 -m venv venv
+* source venv/bin/activate
+
+3. Установка зависимостей:
+* pip install -r requirements.txt
+
+4. Запуск сервера:
+* Выполните команду из корневой папки проекта:
+* uvicorn backend.main:app --reload
+
+5. После запуска приложение будет доступно по адресам:
+ * Веб-интерфейс: http://127.0.0.1:8000
+ * API Документация (Swagger UI): http://127.0.0.1:8000/docs
+ 
+## Автор
+* Студент: [Шиляев Вадим]
+* Дисциплина: Проектный практикум (1 курс, 2 семестр)
