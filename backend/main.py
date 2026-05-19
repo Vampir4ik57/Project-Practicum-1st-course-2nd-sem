@@ -17,6 +17,32 @@ from pathlib import Path
 
 app = FastAPI(title="Workout Planner API")
 
+
+@app.on_event("startup")
+async def startup_event():
+    print("Инициализация базы данных при старте сервера...")
+    # Находим правильный абсолютный путь к файлу со схемой БД
+    sql_schema_path = PROJECT_ROOT / "database" / "Create DB.sql"
+
+    if not sql_schema_path.exists():
+        print(f"[КРИТИЧЕСКАЯ ОШИБКА]: Файл схемы не найден по пути: {sql_schema_path}")
+        return
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            with open(sql_schema_path, "r", encoding="utf-8") as f:
+                schema_script = f.read()
+
+            # Выполняем весь SQL-скрипт создания таблиц
+            conn.executescript(schema_script)
+            conn.commit()
+            print("База данных успешно проверена/инициализирована!")
+        except Exception as e:
+            print(f"[БД ОШИБКА] Не удалось создать таблицы: {e}")
+        finally:
+            conn.close()
+
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
 STATIC_DIR = PROJECT_ROOT / "frontend" / "static"
@@ -124,46 +150,62 @@ async def show_auth_page(request: Request):
 # 2. Обработка регистрации из HTML-формы
 @app.post("/web/register", tags=["Web UI"])
 async def web_register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    name: Optional[str] = Form(None) 
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        name: Optional[str] = Form(None)
 ):
     conn = sql.connection("workouts.db")
-    
+
+    # 1. Защита от SQL-инъекций и багов bcrypt (срез до 72 символов)
+    username = username.strip()
+    safe_password = password[:72].encode('utf-8').decode('utf-8')
+
+    # Проверяем существующего пользователя
     existing_user = sql.select_all(conn, "users", conditions=f"username = '{username}'")
-    
+
     if existing_user:
         conn.close()
         return templates.TemplateResponse(
             request=request,
             name="auth.html",
             context={
-                "reg_error": "Этот логин уже занят", 
+                "reg_error": "Этот логин уже занят",
                 "show_reg": True
             }
         )
 
-    # 2. Если логин свободен, создаем пользователя
-    hashed_password = pwd_context.hash(password.encode('utf-8'))
-    user_id = sql.insert_user(conn, username, hashed_password, name)
-    if user_id:
-        sql.update(
-            conn, 
-            "users", 
-            {"avatar_url": "/static/images/default-avatar.jpg"}, 
-            f"id = {user_id}"
-        )
-        conn.commit()
-    conn.close()
-    
-    if user_id:
-        return RedirectResponse(url="/?registered=true", status_code=303)
-    else:
+    # 2. Безопасное хеширование (теперь без конфликтов типов данных)
+    try:
+        hashed_password = pwd_context.hash(safe_password)
+    except Exception as e:
+        conn.close()
+        print(f"Критическая ошибка хеширования: {e}")  # Увидишь в логах Docker, если что-то пойдет не так
         return templates.TemplateResponse(
             request=request,
             name="auth.html",
-            context={"reg_error": "Ошибка при создании аккаунта", "show_reg": True}
+            context={"reg_error": "Внутренняя ошибка безопасности сервера", "show_reg": True}
+        )
+
+    # 3. Запись в базу данных
+    user_id = sql.insert_user(conn, username, hashed_password, name)
+
+    if user_id:
+        sql.update(
+            conn,
+            "users",
+            {"avatar_url": "/static/images/default-avatar.jpg"},
+            f"id = {user_id}"
+        )
+        conn.commit()
+        conn.close()
+        return RedirectResponse(url="/?registered=true", status_code=303)
+    else:
+        conn.close()
+        return templates.TemplateResponse(
+            request=request,
+            name="auth.html",
+            context={"reg_error": "Ошибка при записи пользователя в БД", "show_reg": True}
         )
 
 # 3. Обработка входа из HTML-формы
@@ -212,8 +254,9 @@ async def dashboard_page(request: Request):
         return RedirectResponse(url="/", status_code=303)
         
     def get_db_connection():
-        conn = sqlite3.connect("../database/workouts.db")
-        conn.row_factory = sqlite3.Row
+        conn = sql.connection("workouts.db")
+        if conn:
+            conn.row_factory = sqlite3.Row
         return conn
 
     conn = get_db_connection()
