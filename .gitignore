@@ -1,0 +1,17 @@
+# === Python Cache ===
+__pycache__/
+*.py[cod]
+*$py.class
+# === Virtual Environments ===
+venv/
+env/
+.venv/
+# === IDE & OS Settings ===
+.vscode/
+.idea/
+.DS_Store
+# === База данных ===
+database/workouts.db
+# === Загрузки пользователей ===
+frontend/static/uploads/avatars/avatar_*.jpg
+frontend/static/uploads/avatars/avatar_*.png
