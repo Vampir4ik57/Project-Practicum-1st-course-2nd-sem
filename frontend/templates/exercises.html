@@ -50,7 +50,9 @@
             <!-- Описание с меткой -->
             <div class="info-block">
                 <span class="field-label">Об упражнении:</span>
-                <p class="ex-text">{{ ex.description }}</p>
+                <p class="ex-text">
+                    {{ ex.description.split(' --- ')[0] if ' --- ' in ex.description else ex.description }}
+                </p>
             </div>
             
             <a href="/web/exercises/{{ ex.id }}" class="btn-jump">Подробнее</a>
