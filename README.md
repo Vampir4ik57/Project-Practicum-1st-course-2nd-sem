@@ -38,7 +38,7 @@ Project-Practicum-1st-course-2nd-sem/
 │   └── DB_description.md    # Подробная схема БД и описание индексов
 ├── frontend/                # Клиентская часть
 │   ├── static/              # CSS стили, изображения и скрипты
-│   └── templates/           # HTML-шаблоны Jinja2
+│   └── templates/           # HTML-шаблоны
 ├── requirements.txt         # Зависимости проекта
 └── README.md                # Документация
 ```
