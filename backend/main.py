@@ -20,26 +20,28 @@ app = FastAPI(title="Workout Planner API")
 
 @app.on_event("startup")
 async def startup_event():
-    print("Инициализация базы данных при старте сервера...")
-    # Находим правильный абсолютный путь к файлу со схемой БД
-    sql_schema_path = PROJECT_ROOT / "database" / "Create DB.sql"
-
-    if not sql_schema_path.exists():
-        print(f"[КРИТИЧЕСКАЯ ОШИБКА]: Файл схемы не найден по пути: {sql_schema_path}")
-        return
-
+    print("Проверка базы данных при старте сервера...")
     conn = get_db_connection()
     if conn:
         try:
-            with open(sql_schema_path, "r", encoding="utf-8") as f:
-                schema_script = f.read()
+            cursor = conn.cursor()
+            # Пытаемся проверить, существует ли уже таблица users
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+            table_exists = cursor.fetchone()
 
-            # Выполняем весь SQL-скрипт создания таблиц
-            conn.executescript(schema_script)
-            conn.commit()
-            print("База данных успешно проверена/инициализирована!")
+            if not table_exists:
+                print("Таблицы не найдены. Инициализируем чистую БД из Create DB.sql...")
+                sql_schema_path = PROJECT_ROOT / "database" / "Create DB.sql"
+                if sql_schema_path.exists():
+                    with open(sql_schema_path, "r", encoding="utf-8") as f:
+                        conn.executescript(f.read())
+                    conn.commit()
+                    print("База данных успешно инициализирована!")
+            else:
+                print("Обнаружена существующая база данных с данными. Пропускаем инициализацию.")
+
         except Exception as e:
-            print(f"[БД ОШИБКА] Не удалось создать таблицы: {e}")
+            print(f"[БД ОШИБКА] Ошибка при проверке/инициализации таблиц: {e}")
         finally:
             conn.close()
 
@@ -694,6 +696,78 @@ async def web_edit_template_save(
         url=f"/web/templates?view=my&success={quote(ok_text, safe='')}", 
         status_code=303
     )
+# Добавление админ панели для супер-юзера (админа)
+@app.get("/web/admin", response_class=HTMLResponse)
+async def admin_feedback_page(request: Request, rating: Optional[str] = None):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        return RedirectResponse(url="/", status_code=303)
+    
+    if int(user_id) != 1:
+        return RedirectResponse(url="/web/profile?error=" + quote("У вас нет прав доступа"), status_code=303)
+
+    rating_int = None
+    if rating and rating.strip().isdigit():
+        rating_int = int(rating)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # РАСЧЕТ СТАТИСТИКИ
+    cursor.execute("SELECT COUNT(*), AVG(rating) FROM feedback")
+    total_count, avg_rating = cursor.fetchone()
+    avg_rating = round(avg_rating, 1) if avg_rating else 0.0
+    
+    cursor.execute("SELECT COUNT(*) FROM feedback WHERE rating <= 2")
+    critical_count = cursor.fetchone()[0]
+    
+    stats = {
+        "total": total_count,
+        "avg": avg_rating,
+        "critical": critical_count
+    }
+
+    # ПОЛУЧЕНИЕ ОТЗЫВОВ С ФИЛЬТРАЦИЕЙ
+    base_query = """
+        SELECT f.id, f.rating, f.subject, f.message, f.created_at, 
+               u.username, u.name, u.avatar_url 
+        FROM feedback f 
+        JOIN users u ON f.user_id = u.id
+    """
+    params = []
+    
+    if rating_int is not None:
+        base_query += " WHERE f.rating = ?"
+        params.append(rating_int)
+        
+    base_query += " ORDER BY f.created_at DESC"
+    
+    cursor.execute(base_query, params)
+    feedbacks = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin_feedback.html",
+        context={
+            "feedbacks": feedbacks,
+            "stats": stats,
+            "current_filter": rating_int
+        }
+    )
+
+@app.post("/web/admin/delete/{feedback_id}", tags=["Admin"])
+async def admin_delete_feedback(request: Request, feedback_id: int):
+    user_id = request.cookies.get("user_id")
+    if not user_id or int(user_id) != 1:
+        return RedirectResponse(url="/web/profile?error=" + quote("У вас нет прав доступа"), status_code=303)
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/web/admin?success=" + quote("Отзыв успешно удалён"), status_code=303)
 
 # профиль пользователя
 @app.get("/web/profile", tags=["Web UI"])
@@ -1185,9 +1259,9 @@ async def send_feedback(
     
     sql.insert(conn, "feedback", feedback_data)
     conn.close()
-
     ok_text = "Спасибо! Ваш отзыв успешно отправлен."
     return RedirectResponse(url=f"/web/feedback?success={quote(ok_text, safe='')}", status_code=303)
+
 
 @app.get("/web/history", response_class=HTMLResponse, tags=["Web UI"])
 async def show_history_page(
