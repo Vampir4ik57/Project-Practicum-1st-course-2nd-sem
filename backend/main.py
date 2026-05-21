@@ -840,7 +840,7 @@ async def upload_avatar(request: Request, file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    db_path = f"../frontend/static/uploads/avatars/{file_name}"
+    db_path = f"/static/uploads/avatars/{file_name}"
     conn = get_db_connection()
     sql.update(conn, "users", {"avatar_url": db_path}, f"id = {user_id}")
     conn.close()
